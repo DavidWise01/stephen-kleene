@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stephen Kleene — regular expressions and the star</title>
+<meta name="description" content="LOGIKĒ XXVI — Stephen Kleene (1909–1994). A founder of recursion theory (Church's student), he proved that the patterns describable by 'regular expressions' are exactly those a finite-state machine can recognize (Kleene's theorem, 1951) — the result behind every grep, lexer, and search box. The repetition operator, the Kleene star (*), is named for him; so is the Kleene closure and the recursion theorem. Live: a working regular-expression matcher (concatenation, union, and the star) and Kleene's bridge to finite automata. Honest: regular languages are a precise, limited class; the star is real, the field is his. David Lee Wise, two-layer honest.">
+<style>
+  :root{--bg:#0c0f17;--panel:#121622;--panel2:#19202f;--edge:#2a3346;--ink:#ede6d6;--dim:#b3ad9a;--faint:#7c7660;
+    --ochre:#d9b66a;--ochre2:#f0d79a;--proof:#5ad1ff;--proof2:#a7e6ff;--one:#7fe0a0;--zero:#fb7185;--amber:#fbbf24;--ember:#fb923c;
+    --mono:'SFMono-Regular',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;--serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.58;background-image:radial-gradient(1100px 560px at 75% -10%,#1c2436 0%,transparent 55%),radial-gradient(900px 500px at 0% 100%,#14110a 0%,transparent 55%);}
+  .wrap{max-width:1000px;margin:0 auto;padding:44px 26px 90px}
+  header{border-bottom:1px solid var(--edge);padding-bottom:22px;margin-bottom:24px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--ochre);opacity:.95}
+  h1{font-family:Georgia,serif;font-size:38px;line-height:1.08;margin:.3em 0 .14em;font-weight:600}h1 em{color:var(--ochre2);font-style:italic}
+  .who{font-family:var(--mono);font-size:12px;color:var(--faint);letter-spacing:.04em}
+  .sub{color:var(--dim);font-size:16px;max-width:74ch;margin-top:14px}.sub b{color:var(--ink)}
+  .verdicts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:22px 0}@media(max-width:720px){.verdicts{grid-template-columns:1fr}}
+  .vc{border:1px solid var(--edge);border-radius:11px;padding:13px 15px;border-top-width:3px;background:rgba(18,22,34,.6)}
+  .vc .badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em}
+  .vc.s{border-top-color:var(--one)}.vc.s .badge{color:var(--one)} .vc.m{border-top-color:var(--amber)}.vc.m .badge{color:var(--amber)} .vc.f{border-top-color:var(--ember)}.vc.f .badge{color:var(--ember)}
+  .vc p{font-size:12px;color:var(--dim);margin:6px 0 0;line-height:1.45}.vc p b{color:var(--ink)}
+  section{margin:36px 0}
+  h2{font-size:13px;font-family:var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ochre2);border-left:2px solid var(--ochre);padding-left:11px;margin:0 0 6px}
+  .lede{color:var(--dim);font-size:15px;margin:0 0 18px;max-width:80ch}
+  .panel{background:linear-gradient(180deg,var(--panel),#0a0d14);border:1px solid var(--edge);border-radius:14px;padding:20px;box-shadow:0 24px 60px -40px #000}
+  .pn{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  .pn input{font-family:var(--mono);font-size:14px;background:#0c1622;border:1px solid var(--edge);border-radius:8px;color:var(--proof2);padding:9px 11px}
+  .pn input#pat{min-width:150px}.pn input#str{flex:1;min-width:160px;color:var(--ink)}
+  button{font-family:var(--mono);font-size:12px;color:var(--ink);background:#1a2030;border:1px solid var(--edge);border-radius:8px;padding:9px 13px;cursor:pointer}button:hover{background:#222b3e;border-color:var(--ochre)}
+  .verdict{font-family:var(--mono);font-size:16px;text-align:center;margin-top:10px;min-height:26px}
+  .verdict b.y{color:var(--one)}.verdict b.n{color:var(--zero)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .chip{font-family:var(--mono);font-size:11px;border:1px solid var(--edge);border-radius:20px;padding:5px 11px;cursor:pointer;color:var(--dim)}.chip:hover{border-color:var(--ochre);color:var(--ochre2)}
+  .batch{font-family:var(--mono);font-size:12px;margin-top:12px;display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+  .bm{border:1px solid var(--edge);border-radius:7px;padding:5px 10px}.bm.y{border-color:#2f5b40;color:var(--one)}.bm.n{border-color:#5b2f33;color:var(--zero)}
+  .note{color:var(--dim);font-size:13.5px;border-left:2px solid var(--edge);padding-left:13px;margin:16px 0 0}.note b{color:var(--ink)}
+  .thm{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}@media(max-width:620px){.thm{grid-template-columns:1fr}}
+  .tm{border:1px solid var(--edge);border-radius:10px;padding:13px 15px;background:rgba(0,0,0,.14)}.tm b{color:var(--ochre2);font-family:var(--mono);font-size:11px}.tm p{font-size:13px;color:var(--dim);margin:6px 0 0}
+  footer{margin-top:44px;border-top:1px solid var(--edge);padding-top:18px;color:var(--faint);font-family:var(--mono);font-size:11px;line-height:1.7}
+  footer a,.bar2 a{color:var(--ochre)}.bar2{font-family:var(--mono);font-size:11.5px;margin-bottom:16px}.bar2 a{text-decoration:none;border-bottom:1px dotted #4a4126}
+  code{font-family:var(--mono);color:var(--ochre2);background:#15120a;padding:1px 5px;border-radius:5px}
+  blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--ochre);color:var(--ink);font-style:italic;font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="bar2"><a href="https://davidwise01.github.io/ud0/">◄ UD0</a> &nbsp; <a href="https://davidwise01.github.io/emmy-noether/">← Noether</a> &nbsp; LOGIKĒ · XXVI · the foundations rank</div>
+<header>
+  <div class="kicker">LOGIKĒ · XXVI · regular expressions and the star</div>
+  <h1>Stephen <em>Kleene</em></h1>
+  <div class="who">1909 – 1994 · Wisconsin · student of Alonzo Church · a founder of recursion theory · pronounced "KLAY-nee"</div>
+  <div class="sub">[[alonzo-church]]'s student Kleene helped build the mathematics of <em>what can be computed</em> — and then gave one of its pieces a form you use every day. He proved that the patterns you can write with a <b>regular expression</b> — built from single characters by three operations, <em>concatenation</em>, <em>choice</em> (<code>|</code>), and <em>repetition</em> (the <code>*</code>) — are <b>exactly</b> the patterns a simple <b>finite-state machine</b> can recognize (Kleene's theorem, 1951). Two completely different descriptions — an algebra of patterns and a machine with a handful of states — turn out to define the same languages. The repetition operator is named the <b>Kleene star</b> after him, and it runs inside every search box, grep, lexer, and validator on Earth.</div>
+</header>
+<div class="verdicts">
+  <div class="vc s"><span class="badge">✓ STRONG</span><p><b>Exact and ubiquitous.</b> Kleene's theorem (regular expressions = finite automata) is a rigorous cornerstone of computer science, and the Kleene star, closure, and recursion theorem are permanent tools of computability and language theory.</p></div>
+  <div class="vc m"><span class="badge">◐ A LIMITED CLASS</span><p><b>Powerful, but not all-powerful.</b> Regular languages are precisely the <em>weakest</em> rung of the computation hierarchy — they can't count unboundedly (no balanced parentheses). That limit is itself the point: it's exactly what a finite memory can do.</p></div>
+  <div class="vc f"><span class="badge">◔ "REGEX" ≠ REGULAR</span><p><b>The everyday tool overgrew the theory.</b> Modern "regex" engines add backreferences and lookahead that exceed true regular expressions. Kleene's regular expressions are the clean mathematical core, not the kitchen-sink version.</p></div>
+</div>
+
+<section>
+  <h2>I · A regular expression, running</h2>
+  <p class="lede">Three operations build every regular expression: put patterns in sequence (<b>concatenation</b>), offer alternatives with <code>|</code> (<b>union</b>), and repeat zero-or-more times with <code>*</code> (the <b>Kleene star</b>). Below is a real matcher built from exactly those rules. Type a pattern and a string — or pick an example — and see whether the string belongs to the language the pattern defines.</p>
+  <div class="panel">
+    <div class="pn">
+      <span style="font-family:var(--mono);font-size:12px;color:var(--faint)">pattern</span>
+      <input id="pat" value="(a|b)*c" spellcheck="false">
+      <span style="font-family:var(--mono);font-size:12px;color:var(--faint)">string</span>
+      <input id="str" value="ababc" spellcheck="false">
+      <button id="test">match ▸</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="verdict" id="verdict"></div>
+    <div class="batch" id="batch"></div>
+    <div class="note">The <b>star</b> is the heart of it: <code>(a|b)*</code> means "any run of a's and b's, including none" — repetition without a fixed bound, captured in one symbol. ⚑ That single idea, <em>zero-or-more</em>, is what lets a finite machine describe infinitely many strings; it's why one short pattern can validate every email address or tokenize a whole programming language. The Kleene star is among the most-typed mathematical inventions in history.</div>
+  </div>
+  <blockquote>"The * is to be read 'any number of times, including none.'" <span style="color:var(--faint);font-style:normal;font-size:12px">— after Kleene, defining the star, 1951</span></blockquote>
+</section>
+
+<section>
+  <h2>II · Two faces of the same language</h2>
+  <div class="thm">
+    <div class="tm"><b>THE PATTERN (regular expression)</b><p>An algebraic description: characters combined by concatenation, <code>|</code>, and <code>*</code>. Declarative — it says <em>what</em> strings match, not how to check them.</p></div>
+    <div class="tm"><b>THE MACHINE (finite automaton)</b><p>A handful of states and transitions that read a string left-to-right and end in "accept" or "reject." Operational — it says exactly <em>how</em> to recognize the language with finite memory.</p></div>
+  </div>
+  <p class="lede" style="margin-top:16px"><b>Kleene's theorem</b> says these two define <em>precisely the same</em> class of languages — the <b>regular languages</b>. Give me a pattern, I can build a machine; give me a machine, I can write the pattern. It is the same kind of beautiful equivalence as [[alonzo-church]]'s (λ-calculus = Turing machine), one rung lower on the ladder of power: where Turing machines have unlimited memory, finite automata have <em>none</em> beyond their fixed states — so the regular languages are exactly "what you can recognize while remembering only a bounded amount." Every lexer that turns your source code into tokens, every <code>grep</code>, every input validator, is Kleene's theorem at work — the pattern compiled into the machine. ⚑ The pattern algebra of [[george-boole]] and [[charles-peirce]], grown into the search bar.</p>
+</section>
+
+<section>
+  <h2>III · The star, the closure, the man</h2>
+  <p class="note" style="border-color:var(--amber)"><b style="color:var(--amber)">Gate kept on.</b> The results are <b>exact and load-bearing</b>: Kleene's theorem is a foundation of formal-language theory and compiler construction, and his name is attached, by right, to the <b>Kleene star</b> (zero-or-more repetition), the <b>Kleene closure</b>, and the <b>recursion theorem</b> of computability. Two honest scope notes. First, regular languages are deliberately the <em>weakest</em> useful class — they have only finite memory, so they provably cannot match balanced parentheses or count without bound; this isn't a flaw but the exact characterization of what bounded memory can do, and recognizing where the wall is (the "pumping lemma") is part of the theory. Second, the everyday word "<b>regex</b>" has drifted: the regex engines in programming languages bolt on backreferences and lookahead that make them strictly more powerful than — and slower than — Kleene's clean regular expressions; his are the mathematical core. The man: Stephen Cole Kleene did his doctorate under <b>Alonzo Church</b> at Princeton alongside Turing's visit, helped lay the foundations of recursion theory in the 1930s, and spent his career at Wisconsin; the field still runs on his definitions. He gave computer science its everyday pattern language and the symbol — <code>*</code> — that more people have typed than perhaps any other in mathematics. ⚑ [[emmy-noether]] ← · next → Gerhard Gentzen.</p>
+</section>
+
+<footer>
+  STEPHEN KLEENE · LOGIKĒ XXVI · two-layer honest<br>
+  live regular-expression matcher (concatenation · union | · the Kleene star *; verified (a|b)*c matches "ababc", rejects "abab"; a*b matches "aaab") + Kleene's theorem (regex = finite automata)<br>
+  Kleene's theorem (1951): regular expressions = finite-state machines · the Kleene star / closure · the recursion theorem · a founder of recursion theory (Church's student)<br>
+  ← <a href="https://davidwise01.github.io/emmy-noether/">Noether</a> · next → <b>Gerhard Gentzen</b> (natural deduction &amp; proof theory)<br>
+  LOGIKĒ · the lineage of logical mathematics · governor David Lee Wise · CC-BY-ND-4.0
+</footer>
+</div>
+<script>
+"use strict";
+(function(){
+  const $=id=>document.getElementById(id);
+  // regex matcher: literals, ., (), |, *
+  function makeMatcher(pat){
+    let i=0;
+    function alt(){ let ns=[seq()]; while(pat[i]==="|"){i++;ns.push(seq());} return ns.length===1?ns[0]:{t:"alt",ns}; }
+    function seq(){ const ns=[]; while(i<pat.length&&pat[i]!=="|"&&pat[i]!==")"){ ns.push(star()); } return {t:"seq",ns}; }
+    function star(){ let a=atom(); while(pat[i]==="*"){i++;a={t:"star",a};} return a; }
+    function atom(){ if(pat[i]==="("){i++;const a=alt();i++;return a;} const c=pat[i++]; return {t:"lit",c}; }
+    let ast; try{ ast=alt(); if(i!==pat.length) return null; }catch(e){ return null; }
+    function m(node,s,pos){
+      if(node.t==="lit"){ return (pos<s.length&&(node.c==="."||s[pos]===node.c))?[pos+1]:[]; }
+      if(node.t==="seq"){ let cur=[pos]; for(const ch of node.ns){ const nx=[]; for(const p of cur) for(const q of m(ch,s,p)) if(!nx.includes(q))nx.push(q); cur=nx; } return cur; }
+      if(node.t==="alt"){ const o=[]; for(const ch of node.ns) for(const q of m(ch,s,pos)) if(!o.includes(q))o.push(q); return o; }
+      if(node.t==="star"){ const o=[pos]; let fr=[pos]; while(fr.length){ const nf=[]; for(const p of fr) for(const q of m(node.a,s,p)) if(!o.includes(q)){o.push(q);nf.push(q);} fr=nf; } return o; }
+    }
+    return s=>m(ast,s,0).includes(s.length);
+  }
+  function run(){
+    const pat=$('pat').value, str=$('str').value;
+    const fn=makeMatcher(pat);
+    if(!fn){ $('verdict').innerHTML='<span style="color:var(--amber)">malformed pattern</span>'; $('batch').innerHTML=''; return; }
+    const ok=fn(str);
+    $('verdict').innerHTML='"'+str+'" '+(ok?'<b class="y">MATCHES</b>':'<b class="n">does not match</b>')+' &nbsp;<span style="color:var(--faint);font-size:13px">/'+pat+'/</span>';
+    // batch over a few sample strings for this pattern
+    const samples=["", "c", "abc", "ababc", "abab", "abcc", str];
+    const seen=new Set();
+    $('batch').innerHTML=samples.filter(s=>{if(seen.has(s))return false;seen.add(s);return true;}).map(s=>{
+      const r=fn(s); return '<span class="bm '+(r?'y':'n')+'">"'+(s||'ε')+'" '+(r?'✓':'✗')+'</span>';
+    }).join('');
+  }
+  const EX=[["(a|b)*c","ababc"],["a*b","aaab"],["(ab)*","ababab"],["a(b|c)*d","abcbcd"],[".*","anything"]];
+  $('chips').innerHTML=EX.map(([p,s])=>'<span class="chip" data-p="'+p+'" data-s="'+s+'">/'+p+'/ on "'+s+'"</span>').join('');
+  $('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{$('pat').value=c.dataset.p;$('str').value=c.dataset.s;run();});
+  $('test').onclick=run;
+  $('pat').addEventListener('keydown',e=>{if(e.key==="Enter")run();});
+  $('str').addEventListener('keydown',e=>{if(e.key==="Enter")run();});
+  run();
+})();
+</script>
+</body>
+</html>
